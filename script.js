@@ -927,7 +927,7 @@ function update(dt) {
                         b.jumpTimer = 0.5; // Jump
                         b.jumpedInChase = true;
                     }
-                    b.speed = player.speed * 1.8; // Old speed + more
+                    b.speed = player.speed * 1.1; // Rapid sprint down from 1.8
                 }
                 
                 bots.forEach(other => {
@@ -1326,7 +1326,7 @@ function draw() {
 
     if (gameState === 'celebration_sequence') {
         cinematicZoom += (1.5 - cinematicZoom) * 2 * 0.016; 
-        cinematicBars += (30 - cinematicBars) * 2 * 0.016; 
+        cinematicBars += (50 - cinematicBars) * 2 * 0.016; 
     } else {
         cinematicZoom = 1.0;
         cinematicBars = 0;
@@ -1601,6 +1601,13 @@ function draw() {
     ctx.restore();
     
     ctx.restore(); // Restore cinematic zoom
+    
+    if (gameState === 'celebration_sequence') {
+        const uiOverlay = document.getElementById('uiOverlay');
+        const mobileControls = document.getElementById('mobileControls');
+        if (uiOverlay) uiOverlay.classList.add('hidden');
+        if (mobileControls) mobileControls.classList.add('hidden');
+    }
     
     if (cinematicBars > 0) {
         ctx.fillStyle = "black";
