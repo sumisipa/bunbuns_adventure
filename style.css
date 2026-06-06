@@ -1,0 +1,530 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Press Start 2P', cursive;
+    user-select: none;
+}
+
+body, html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #000;
+}
+
+#gameContainer {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+}
+
+#uiOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    padding: 20px;
+}
+
+#collectionCounter {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    color: white;
+    text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+    font-size: 14px;
+    pointer-events: auto;
+    background: rgba(255, 105, 180, 0.4);
+    padding: 10px;
+    border: 4px solid #ffb6c1;
+    box-shadow: inset -4px -4px 0 rgba(0,0,0,0.2);
+}
+
+/* Mini Cassette Icon */
+#cassetteContainer {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#cassetteIcon {
+    width: 64px;
+    height: 64px;
+    cursor: pointer;
+    image-rendering: pixelated;
+    transition: transform 0.2s;
+    filter: drop-shadow(2px 2px 0 #000);
+}
+
+#cassetteIcon:hover {
+    transform: scale(1.1);
+}
+
+.play-me-mini {
+    color: white;
+    font-size: 10px;
+    text-shadow: 2px 2px 0 #ff69b4;
+    margin-top: 8px;
+    animation: blink 1s infinite alternate;
+}
+
+/* Intro Screen */
+.fullscreen-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: #ffb6c1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 300;
+}
+.pixel-title {
+    color: #fff;
+    text-shadow: 4px 4px 0 #ff69b4, -4px -4px 0 #ff69b4, 4px -4px 0 #ff69b4, -4px 4px 0 #ff69b4;
+    font-size: 32px;
+    margin-bottom: 40px;
+    text-align: center;
+    line-height: 1.5;
+}
+
+/* Big Cassette Popup */
+#bigCassettePopup {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+    z-index: 150;
+    transition: opacity 0.5s;
+    opacity: 1;
+}
+
+#bigCassettePopup.hidden {
+    opacity: 0;
+    pointer-events: none;
+    z-index: -1;
+    display: flex !important; /* Keep layout active for transitions */
+}
+
+.cassette-ui-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    position: relative;
+}
+
+.play-me-text {
+    color: white;
+    font-size: 16px;
+    text-shadow: 2px 2px 0 #ff69b4;
+    margin-top: 10px;
+    animation: blink 1s infinite alternate;
+}
+@keyframes blink {
+    from { opacity: 1; }
+    to { opacity: 0.5; }
+}
+
+.cassette-machine-sprite {
+    position: relative;
+    width: 400px;
+    height: 300px;
+    background-image: url('cassette_player.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    image-rendering: pixelated;
+    filter: drop-shadow(0 10px 10px rgba(0,0,0,0.8));
+}
+
+#cassetteTray {
+    position: absolute;
+    width: 160px;
+    height: 90px;
+    background: rgba(20, 20, 20, 0.85);
+    border: 4px solid #333;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) perspective(400px) rotateX(0deg);
+    transform-origin: bottom center;
+    transition: transform 0.5s ease;
+    z-index: 5;
+    box-shadow: inset 0 0 20px #000;
+}
+
+#cassetteTray.open {
+    transform: translate(-50%, -50%) perspective(400px) rotateX(60deg);
+}
+
+#insertedTape {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 80px;
+    height: auto;
+    image-rendering: pixelated;
+    transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+    transform: translate(-50%, -150%) scale(0.5);
+    opacity: 0;
+    z-index: 2; /* Behind tray */
+}
+
+#insertedTape.inserted {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+}
+
+#insertedTape.playing {
+    animation: tapeSpin 1.5s linear infinite;
+}
+
+@keyframes tapeSpin {
+    0% { filter: hue-rotate(0deg); }
+    100% { filter: hue-rotate(360deg); }
+}
+
+.machine-controls {
+    position: absolute;
+    bottom: -45px;
+    display: flex;
+    gap: 10px;
+}
+
+.volume-container {
+    position: absolute;
+    right: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    color: white;
+    font-size: 8px;
+    text-shadow: 1px 1px 0 #000;
+}
+
+#volumeSlider {
+    width: 60px;
+    transform: rotate(-90deg);
+    margin-top: 20px;
+}
+
+.pixel-btn {
+    background: #444;
+    color: #fff;
+    border: 4px solid #ccc;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 16px;
+    padding: 10px 14px;
+    cursor: pointer;
+    box-shadow: inset -4px -4px 0 rgba(0,0,0,0.4);
+}
+
+.pixel-btn:active {
+    box-shadow: inset 4px 4px 0 rgba(0,0,0,0.4);
+    transform: translate(2px, 2px);
+}
+
+.pixel-btn.active {
+    background: #27ae60;
+}
+
+.tapes-below {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    border: 2px dashed rgba(255,255,255,0.3);
+}
+
+.tape-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.tape-wrapper:hover {
+    transform: translateY(-10px);
+}
+
+.tape-pick {
+    width: 64px;
+    height: auto;
+    image-rendering: pixelated;
+    filter: drop-shadow(2px 2px 0 #000);
+}
+
+.tape-label {
+    color: white;
+    font-size: 10px;
+    text-shadow: 2px 2px 0 #000;
+}
+
+.pixel-close-btn {
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    background: #e74c3c;
+    color: white;
+    border: 3px solid #fff;
+    width: 30px;
+    height: 30px;
+    font-family: 'Press Start 2P', cursive;
+    cursor: pointer;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 2px 2px 0 #000;
+}
+
+/* Letter Popup */
+#letterPopup {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+    z-index: 100;
+}
+
+.paper-container {
+    position: relative;
+    width: 80%;
+    max-width: 400px;
+    min-height: 300px;
+    margin-bottom: 20px;
+    background-color: #fcf5e5;
+    background-image: linear-gradient(#e0d7c6 2px, transparent 2px);
+    background-size: 100% 30px;
+    border: 2px solid #d4c4a8;
+    box-shadow: 8px 8px 0 rgba(0,0,0,0.3);
+    padding: 40px 30px;
+    border-radius: 2px;
+}
+
+.paper-container::before {
+    content: '';
+    position: absolute;
+    top: -15px;
+    left: 50%;
+    transform: translateX(-50%) rotate(-2deg);
+    width: 100px;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.6);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+#letterContent {
+    width: 100%;
+    max-height: 250px;
+    overflow-y: auto;
+    color: #4a4a4a;
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    font-weight: bold;
+    line-height: 30px;
+    text-align: left;
+    word-wrap: break-word;
+    margin-top: -6px; /* Align text on notebook lines */
+}
+
+#closeLetterBtn {
+    font-size: 14px;
+    padding: 15px 30px;
+}
+
+/* Celebration Screen */
+#celebrationScreen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #ffb6c1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+    z-index: 200;
+    overflow: hidden;
+}
+
+.celebration-title {
+    color: #fff;
+    text-shadow: 4px 4px 0 #e74c3c, -4px -4px 0 #e74c3c, 4px -4px 0 #e74c3c, -4px 4px 0 #e74c3c;
+    font-size: 32px;
+    margin-bottom: 50px;
+    text-align: center;
+    line-height: 1.5;
+    padding: 0 20px;
+    z-index: 2;
+}
+
+#playAgainBtn {
+    font-size: 16px;
+    padding: 15px 30px;
+    z-index: 2;
+}
+
+/* Joystick & Jump */
+#mobileControls {
+    position: absolute;
+    bottom: 40px;
+    left: 40px;
+    right: 40px;
+    pointer-events: none;
+    z-index: 50;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+#joystickBase {
+    pointer-events: auto;
+    width: 120px;
+    height: 120px;
+    background: rgba(255, 105, 180, 0.4);
+    border: 6px solid #ffb6c1;
+    border-radius: 0; 
+    position: relative;
+    touch-action: none;
+    box-shadow: inset -4px -4px 0 rgba(0,0,0,0.5), 0 5px 15px rgba(0,0,0,0.3);
+}
+
+#joystickStick {
+    width: 44px;
+    height: 44px;
+    background: #ff69b4;
+    border-radius: 0; 
+    border: 4px solid #ffb6c1;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    box-shadow: inset -2px -2px 0 rgba(0,0,0,0.4);
+}
+
+.jump-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    pointer-events: auto;
+}
+
+#jumpBtn {
+    width: 80px;
+    height: 80px;
+    border-radius: 0; 
+    background: rgba(255, 105, 180, 0.8);
+    border: 6px solid #ffb6c1;
+    color: white;
+    font-size: 14px;
+    font-family: 'Press Start 2P', cursive;
+    box-shadow: inset -4px -4px 0 rgba(0,0,0,0.5), 0 5px 15px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: transform 0.1s;
+    touch-action: none;
+}
+
+#jumpBtn:active {
+    transform: scale(0.95);
+    background: rgba(219, 112, 147, 1);
+    box-shadow: inset 4px 4px 0 rgba(0,0,0,0.5);
+}
+
+#jumpCooldownBar {
+    width: 80px;
+    height: 12px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 2px solid #fff;
+}
+
+#jumpCooldownFill {
+    width: 100%;
+    height: 100%;
+    background: #4ade80; /* ready green */
+    transition: width 0.1s linear, background 0.1s;
+}
+
+/* Utilities */
+.hidden {
+    display: none !important;
+}
+
+.fade-transition {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.heart {
+    position: absolute;
+    color: #e74c3c;
+    font-size: 20px;
+    animation: floatUp 3s linear forwards;
+    pointer-events: none;
+    z-index: 1;
+}
+
+@keyframes floatUp {
+    0% { transform: translateY(0) scale(1); opacity: 1; }
+    100% { transform: translateY(-100vh) scale(1.5); opacity: 0; }
+}
+
+@media (max-width: 768px) {
+    #collectionCounter {
+        font-size: 10px;
+    }
+    .celebration-title {
+        font-size: 20px;
+    }
+    .cassette-machine-sprite {
+        width: 250px;
+        height: 160px;
+    }
+    .tape-pick {
+        width: 48px;
+    }
+}

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Happy Monthsary</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="uiOverlay">
+            <div id="collectionCounter">Letters Found: <span id="letterCount">0</span> / 8</div>
+            
+            <div id="cassetteContainer">
+                <img src="tape.png" id="cassetteIcon" alt="Cassette Player">
+                <div id="cassettePlayMe" class="play-me-mini">PLAY ME</div>
+            </div>
+        </div>
+
+        <!-- Big Cassette UI Popup -->
+        <div id="bigCassettePopup" class="hidden fade-transition">
+            <div class="cassette-ui-wrapper">
+                <button id="closeCassetteBtn" class="pixel-close-btn">X</button>
+                
+                <div class="cassette-machine-sprite">
+                    <div id="cassetteTray" class="closed"></div>
+                    <img src="tape.png" id="insertedTape" class="hidden">
+                    
+                    <div class="machine-controls">
+                        <button id="deckStopBtn" class="pixel-btn" title="Stop">⏹️</button>
+                        <button id="deckLoopBtn" class="pixel-btn" title="Loop">🔁</button>
+                    </div>
+                    
+                    <div class="volume-container">
+                        <label>VOL</label>
+                        <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.5">
+                    </div>
+                </div>
+                
+                <div class="play-me-text">PLAY ME</div>
+                
+                <div class="tapes-below">
+                    <div class="tape-wrapper" data-track="1">
+                        <img src="tape.png" class="tape-pick">
+                        <span class="tape-label">Tape 1</span>
+                    </div>
+                    <div class="tape-wrapper" data-track="2">
+                        <img src="tape.png" class="tape-pick">
+                        <span class="tape-label">Tape 2</span>
+                    </div>
+                    <div class="tape-wrapper" data-track="3">
+                        <img src="tape.png" class="tape-pick">
+                        <span class="tape-label">Tape 3</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Popup for reading letter -->
+        <div id="letterPopup" class="hidden fade-transition">
+            <div class="paper-container">
+                <div id="letterContent"></div>
+            </div>
+            <button id="closeLetterBtn" class="pixel-btn">Close</button>
+        </div>
+
+        <!-- Celebration Screen -->
+        <div id="celebrationScreen" class="hidden fade-transition">
+            <h1 class="celebration-title">Happy Monthsary Mahal ❤️</h1>
+            <button id="playAgainBtn" class="pixel-btn">Play Again</button>
+        </div>
+
+        <!-- Always Visible Joystick & Jump -->
+        <div id="mobileControls">
+            <div id="joystickBase">
+                <div id="joystickStick"></div>
+            </div>
+            <div class="jump-container">
+                <button id="jumpBtn">JUMP</button>
+                <div id="jumpCooldownBar">
+                    <div id="jumpCooldownFill"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Intro Screen -->
+    <div id="introScreen" class="fullscreen-overlay fade-transition">
+        <h1 class="pixel-title">Bunbun's Adventure</h1>
+        <button id="startBtn" class="pixel-btn">START GAME</button>
+    </div>
+
+    <!-- Audio elements -->
+    <audio id="music1" src="music1.mp3"></audio>
+    <audio id="music2" src="music2.mp3"></audio>
+    <audio id="music3" src="music3.mp3"></audio>
+    <audio id="sfxWalk" src="walk.mp3" loop></audio>
+    <audio id="sfxJump" src="jump.mp3"></audio>
+
+    <script src="script.js"></script>
+</body>
+</html>
