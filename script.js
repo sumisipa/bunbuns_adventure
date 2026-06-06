@@ -531,8 +531,16 @@ function update(dt) {
     }
 
     // Bots AI logic
+    const isClarenceAttacking = bots.some(b => b.type === 'protector' && b.attackTimer > 0);
+    
     bots.forEach(b => {
         if (b.type === 'guardian') {
+            if (isClarenceAttacking) {
+                b.vx = 0;
+                b.vy = 0;
+                return; // Stop moving while Clarence attacks
+            }
+            
             if (b.stunTimer > 0) {
                 b.stunTimer -= dt;
                 b.vx = 0;
@@ -629,6 +637,17 @@ function update(dt) {
             
             if (b.attackTimer > 0) {
                 b.attackTimer -= dt;
+                if (b.attackTimer <= 0) {
+                    // Attack finished (bat image 3 done), stun enemy!
+                    if (b.attackTarget && (!b.attackTarget.stunTimer || b.attackTarget.stunTimer <= 0)) {
+                        b.attackTarget.stunTimer = 6.0;
+                        b.attackTarget.guardianState = 'stunned';
+                        if (sfxBatHit && sfxBatHit.readyState >= 2) {
+                            sfxBatHit.currentTime = 1.0;
+                            sfxBatHit.play().catch(e=>console.log(e));
+                        }
+                    }
+                }
             }
             
             if (target) {
@@ -636,25 +655,22 @@ function update(dt) {
                 const dx = target.x - b.x;
                 const dy = target.y - b.y;
                 const distToTarget = Math.hypot(dx, dy);
-                if (distToTarget > 0) {
+                
+                if (b.attackTimer > 0) {
+                    // Stop moving while attacking
+                    b.vx = 0;
+                    b.vy = 0;
+                } else if (distToTarget > 0) {
                     b.vx = dx / distToTarget;
                     b.vy = dy / distToTarget;
                 }
                 
-                // Shoot bat
+                // Swing bat
                 if (b.shootTimer === undefined) b.shootTimer = 3.0;
                 b.shootTimer -= dt;
-                if (b.shootTimer <= 0) {
-                    b.attackTimer = 0.9; // 0.9 seconds of attack animation
-                    projectiles.push({
-                        x: b.x,
-                        y: b.y,
-                        vx: dx / distToTarget,
-                        vy: dy / distToTarget,
-                        speed: 500,
-                        animFrame: 1,
-                        animTimer: 0
-                    });
+                if (b.shootTimer <= 0 && (!b.attackTimer || b.attackTimer <= 0)) {
+                    b.attackTimer = 0.45; // 0.45 seconds of attack animation (faster)
+                    b.attackTarget = target;
                     b.shootTimer = 3.0;
                 }
                 
@@ -729,40 +745,7 @@ function update(dt) {
         }
     });
 
-    // Projectiles
-    for (let i = projectiles.length - 1; i >= 0; i--) {
-        const p = projectiles[i];
-        p.x += p.vx * p.speed * dt;
-        p.y += p.vy * p.speed * dt;
-        
-        p.animTimer += dt;
-        if (p.animTimer > 0.1) {
-            p.animFrame = (p.animFrame % 3) + 1; // 1, 2, 3
-            p.animTimer = 0;
-        }
-        
-        // Hit detection
-        let hit = false;
-        bots.forEach(b => {
-            if (b.type === 'guardian' && !hit && (!b.stunTimer || b.stunTimer <= 0)) {
-                const dx = p.x - b.x;
-                const dy = p.y - b.y;
-                if (Math.hypot(dx, dy) < 40) {
-                    hit = true;
-                    b.stunTimer = 6.0; // Stun for 6 seconds
-                    b.guardianState = 'stunned';
-                    if (sfxBatHit && sfxBatHit.readyState >= 2) {
-                        sfxBatHit.currentTime = 0;
-                        sfxBatHit.play().catch(e=>console.log(e));
-                    }
-                }
-            }
-        });
-        
-        if (hit || p.x < camera.x - 200 || p.x > camera.x + canvas.width + 200 || p.y < camera.y - 200 || p.y > camera.y + canvas.height + 200) {
-            projectiles.splice(i, 1);
-        }
-    }
+    // Projectiles removed
 
     // Handle Collisions (Player <-> Bots)
     bots.forEach(b => {
@@ -963,23 +946,7 @@ function draw() {
         }
     }
 
-    // Draw Projectiles
-    projectiles.forEach(p => {
-        const pScreenX = Math.floor(p.x - camera.x);
-        const pScreenY = Math.floor(p.y - camera.y);
-        
-        let pImg = images['bat' + p.animFrame];
-        if (!pImg) pImg = images.bat1;
-        
-        if (pImg && pImg.complete && pImg.naturalWidth > 0) {
-            ctx.save();
-            ctx.translate(pScreenX, pScreenY);
-            // Face direction of velocity
-            if (p.vx < 0) ctx.scale(-1, 1);
-            ctx.drawImage(pImg, -20, -20, 40, 40);
-            ctx.restore();
-        }
-    });
+    // Draw Projectiles removed
 
     // Draw Bots
     bots.forEach(b => {
@@ -1003,8 +970,8 @@ function draw() {
             
             // Play bat animation on Clarence when attacking
             if (b.attackTimer > 0) {
-                if (b.attackTimer > 0.6) bImg = images.bat1;
-                else if (b.attackTimer > 0.3) bImg = images.bat2;
+                if (b.attackTimer > 0.30) bImg = images.bat1;
+                else if (b.attackTimer > 0.15) bImg = images.bat2;
                 else bImg = images.bat3;
             } else if (b.jumpTimer > 0) {
                 bImg = images.playerJump;
