@@ -189,6 +189,14 @@ window.addEventListener('resize', resize);
 resize();
 
 // Intro Screen Logic
+const orientationOverlay = document.getElementById('orientationOverlay');
+const closeRotateBtn = document.getElementById('closeRotateBtn');
+if (closeRotateBtn) {
+    closeRotateBtn.addEventListener('click', () => {
+        orientationOverlay.style.setProperty('display', 'none', 'important');
+    });
+}
+
 document.getElementById('startBtn').addEventListener('click', () => {
     initAudio(); 
     document.getElementById('introScreen').classList.add('hidden');
@@ -1302,6 +1310,11 @@ let cinematicBars = 0;
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    let baseZoom = 1.0;
+    if (window.innerHeight > window.innerWidth) { // portrait
+        baseZoom = 0.6; // zoom out on mobile to see more vertically
+    }
+
     if (gameState === 'celebration_sequence') {
         cinematicZoom += (1.5 - cinematicZoom) * 2 * 0.016; 
         cinematicBars += (140 - cinematicBars) * 2 * 0.016; 
@@ -1314,7 +1327,9 @@ function draw() {
     const cx = canvas.width / 2;
     const cy = canvas.height / 2;
     ctx.translate(cx, cy);
-    ctx.scale(cinematicZoom, cinematicZoom);
+    
+    const finalZoom = cinematicZoom * baseZoom;
+    ctx.scale(finalZoom, finalZoom);
     ctx.translate(-cx, -cy);
 
     // Calculate Grid bounds
@@ -1400,6 +1415,10 @@ function draw() {
     // Indicator and Catch Text for thief
     if (gameState === 'pic_chase') {
         ctx.save();
+        const unscale = 1 / baseZoom; // Keep UI text the same apparent size
+        ctx.translate(canvas.width / 2, 60);
+        ctx.scale(unscale, unscale);
+        
         ctx.fillStyle = "#ff69b4"; // pink
         ctx.font = "18px 'Press Start 2P', cursive";
         ctx.textAlign = "center";
@@ -1408,7 +1427,7 @@ function draw() {
         ctx.shadowBlur = 4;
         ctx.shadowOffsetX = 2;
         ctx.shadowOffsetY = 2;
-        ctx.fillText("Catch the thief!", canvas.width / 2, 60);
+        ctx.fillText("Catch the thief!", 0, 0);
         ctx.restore();
         
         const thief = bots.find(b => b.type === 'pic_thief');
@@ -1517,15 +1536,21 @@ function draw() {
         if (b.type === 'pic_thief') {
             const heldPic = images[`pic${b.picIndex}`];
             if (heldPic && heldPic.complete && heldPic.naturalWidth > 0) {
+                const unscale = 1 / baseZoom;
                 if (b.stunTimer > 0) {
                     // Draw lying down
                     ctx.save();
                     ctx.translate(drawWidth / 2 - 10, drawHeight / 2 - 5);
+                    ctx.scale(unscale, unscale);
                     ctx.rotate(Math.PI / 2);
                     ctx.drawImage(heldPic, -15, -15, 30, 30);
                     ctx.restore();
                 } else {
-                    ctx.drawImage(heldPic, drawWidth / 4, -drawHeight / 4, 30, 30);
+                    ctx.save();
+                    ctx.translate(drawWidth / 4, -drawHeight / 4);
+                    ctx.scale(unscale, unscale);
+                    ctx.drawImage(heldPic, 0, 0, 30, 30);
+                    ctx.restore();
                 }
             }
         }
@@ -1533,6 +1558,11 @@ function draw() {
 
         // Draw Name Tag if bot has a name
         if (b.name) {
+            ctx.save();
+            const unscale = 1 / baseZoom;
+            ctx.translate(bScreenX + player.width / 2, bScreenY - 5);
+            ctx.scale(unscale, unscale);
+            
             if (b.type === 'protector') {
                 ctx.fillStyle = "#add8e6"; // light blue
             } else {
@@ -1545,46 +1575,52 @@ function draw() {
             ctx.shadowBlur = 4;
             ctx.shadowOffsetX = 1;
             ctx.shadowOffsetY = 1;
-            ctx.fillText(b.name, bScreenX + player.width / 2, bScreenY - 5);
+            ctx.fillText(b.name, 0, 0);
             ctx.shadowColor = "transparent";
+            ctx.restore();
         }
 
         // Draw chat bubble if bot has a message
         if (b.chatMessage) {
             ctx.save();
+            const unscale = 1 / baseZoom;
+            const bx = bScreenX + player.width / 2;
+            const by = bScreenY - 15;
+            
+            ctx.translate(bx, by);
+            ctx.scale(unscale, unscale);
+            
             ctx.font = "8px 'Press Start 2P', cursive";
             const textWidth = ctx.measureText(b.chatMessage).width;
             const padding = 8;
             const bubbleWidth = textWidth + padding * 2;
             const bubbleHeight = 18;
-            const bx = bScreenX + player.width / 2;
-            const by = bScreenY - 15;
             
             ctx.fillStyle = b.type === 'protector' ? "rgba(59, 130, 246, 0.95)" : "rgba(255, 105, 180, 0.95)";
             ctx.strokeStyle = "#fff";
             ctx.lineWidth = 2;
             
-            ctx.fillRect(bx - bubbleWidth / 2, by - bubbleHeight, bubbleWidth, bubbleHeight);
-            ctx.strokeRect(bx - bubbleWidth / 2, by - bubbleHeight, bubbleWidth, bubbleHeight);
+            ctx.fillRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight);
+            ctx.strokeRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight);
             
             ctx.beginPath();
-            ctx.moveTo(bx - 5, by);
-            ctx.lineTo(bx + 5, by);
-            ctx.lineTo(bx, by + 5);
+            ctx.moveTo(-5, 0);
+            ctx.lineTo(5, 0);
+            ctx.lineTo(0, 5);
             ctx.closePath();
             ctx.fill();
             
             ctx.strokeStyle = "#fff";
             ctx.beginPath();
-            ctx.moveTo(bx - 5, by);
-            ctx.lineTo(bx, by + 5);
-            ctx.lineTo(bx + 5, by);
+            ctx.moveTo(-5, 0);
+            ctx.lineTo(0, 5);
+            ctx.lineTo(5, 0);
             ctx.stroke();
             
             ctx.fillStyle = "#fff";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(b.chatMessage, bx, by - bubbleHeight / 2);
+            ctx.fillText(b.chatMessage, 0, -bubbleHeight / 2);
             ctx.restore();
         }
     });
@@ -1624,6 +1660,11 @@ function draw() {
     ctx.restore();
 
     // Name Tag (drawn after restore so it's never inverted)
+    ctx.save();
+    const unscale = 1 / baseZoom;
+    ctx.translate(pScreenX + player.width / 2, pScreenY - 10);
+    ctx.scale(unscale, unscale);
+    
     ctx.fillStyle = "#ffb6c1";
     ctx.font = "12px 'Press Start 2P', cursive";
     ctx.textAlign = "center";
@@ -1632,8 +1673,9 @@ function draw() {
     ctx.shadowBlur = 4;
     ctx.shadowOffsetX = 2;
     ctx.shadowOffsetY = 2;
-    ctx.fillText(player.name, pScreenX + player.width / 2, pScreenY - 10);
+    ctx.fillText(player.name, 0, 0);
     ctx.shadowColor = "transparent";
+    ctx.restore();
     
     ctx.restore(); // Restore cinematic zoom
     
