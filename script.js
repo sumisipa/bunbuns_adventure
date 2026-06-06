@@ -189,13 +189,6 @@ window.addEventListener('resize', resize);
 resize();
 
 // Intro Screen Logic
-const orientationOverlay = document.getElementById('orientationOverlay');
-const closeRotateBtn = document.getElementById('closeRotateBtn');
-if (closeRotateBtn) {
-    closeRotateBtn.addEventListener('click', () => {
-        orientationOverlay.style.setProperty('display', 'none', 'important');
-    });
-}
 
 document.getElementById('startBtn').addEventListener('click', () => {
     initAudio(); 
@@ -1312,7 +1305,7 @@ function draw() {
 
     let baseZoom = 1.0;
     if (window.innerHeight > window.innerWidth) { // portrait
-        baseZoom = 0.6; // zoom out on mobile to see more vertically
+        baseZoom = 0.45; // zoom out more on mobile
     }
 
     if (gameState === 'celebration_sequence') {
