@@ -1563,7 +1563,6 @@ function draw() {
                 }
             }
         }
-        }
         ctx.restore();
     });
 
