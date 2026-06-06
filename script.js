@@ -921,7 +921,7 @@ function update(dt) {
                 b.chaseTimer -= dt;
                 
                 if (b.chaseTimer > 0) {
-                    b.speed = player.speed * 0.7; // Slow chase initially
+                    b.speed = player.speed; // Copy player speed exactly
                 } else {
                     if (!b.jumpedInChase) {
                         b.jumpTimer = 0.5; // Jump
@@ -1326,7 +1326,7 @@ function draw() {
 
     if (gameState === 'celebration_sequence') {
         cinematicZoom += (1.5 - cinematicZoom) * 2 * 0.016; 
-        cinematicBars += (100 - cinematicBars) * 2 * 0.016; 
+        cinematicBars += (30 - cinematicBars) * 2 * 0.016; 
     } else {
         cinematicZoom = 1.0;
         cinematicBars = 0;
@@ -1563,8 +1563,62 @@ function draw() {
                 }
             }
         }
+        }
         ctx.restore();
+    });
 
+    // Player Rendering
+    const pScreenX = Math.floor(player.x - camera.x);
+    let pScreenY = Math.floor(player.y - camera.y);
+
+    if (player.jumpTimer > 0) {
+        pScreenY -= Math.sin(player.jumpTimer * Math.PI) * 40; 
+    }
+
+    let currentImg = images.playerIdle;
+    if (player.jumpTimer > 0) {
+        currentImg = images.playerJump;
+    } else if (player.animFrame === 1) {
+        currentImg = images.playerWalk1;
+    } else if (player.animFrame === 2) {
+        currentImg = images.playerWalk2;
+    }
+
+    ctx.save();
+    // Translate to center of player to pivot for flipping
+    ctx.translate(pScreenX + player.width / 2, pScreenY + player.height / 2);
+    
+    if (!player.facingRight) {
+        ctx.scale(-1, 1);
+    }
+
+    if (currentImg && currentImg.complete && currentImg.naturalWidth > 0) {
+        ctx.drawImage(currentImg, -player.width / 2, -player.height / 2, player.width, player.height);
+    } else {
+        ctx.fillStyle = '#3b82f6';
+        ctx.fillRect(-player.width / 2, -player.height / 2, player.width, player.height);
+    }
+    
+    ctx.restore();
+    
+    ctx.restore(); // Restore cinematic zoom
+    
+    if (cinematicBars > 0) {
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, canvas.width, cinematicBars); // Top bar
+        ctx.fillRect(0, canvas.height - cinematicBars, canvas.width, cinematicBars); // Bottom bar
+    }
+    
+    // -- DRAW UI ELEMENTS ON TOP OF CINEMATIC BARS --
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(finalZoom, finalZoom);
+    ctx.translate(-cx, -cy);
+    
+    bots.forEach(b => {
+        const bScreenX = Math.floor(b.x - camera.x);
+        const bScreenY = Math.floor(b.y - camera.y);
+        
         // Draw Name Tag if bot has a name
         if (b.name) {
             ctx.save();
@@ -1572,11 +1626,7 @@ function draw() {
             ctx.translate(bScreenX + player.width / 2, bScreenY - 5);
             ctx.scale(unscale, unscale);
             
-            if (b.type === 'protector') {
-                ctx.fillStyle = "#add8e6"; // light blue
-            } else {
-                ctx.fillStyle = "#ffb6c1"; // pink
-            }
+            ctx.fillStyle = b.type === 'protector' ? "#add8e6" : "#ffb6c1";
             ctx.font = "10px 'Press Start 2P', cursive";
             ctx.textAlign = "center";
             ctx.textBaseline = "bottom";
@@ -1634,41 +1684,7 @@ function draw() {
         }
     });
 
-    // Player Rendering
-    const pScreenX = Math.floor(player.x - camera.x);
-    let pScreenY = Math.floor(player.y - camera.y);
-
-    if (player.jumpTimer > 0) {
-        pScreenY -= Math.sin(player.jumpTimer * Math.PI) * 40; 
-    }
-
-    let currentImg = images.playerIdle;
-    if (player.jumpTimer > 0) {
-        currentImg = images.playerJump;
-    } else if (player.animFrame === 1) {
-        currentImg = images.playerWalk1;
-    } else if (player.animFrame === 2) {
-        currentImg = images.playerWalk2;
-    }
-
-    ctx.save();
-    // Translate to center of player to pivot for flipping
-    ctx.translate(pScreenX + player.width / 2, pScreenY + player.height / 2);
-    
-    if (!player.facingRight) {
-        ctx.scale(-1, 1);
-    }
-
-    if (currentImg && currentImg.complete && currentImg.naturalWidth > 0) {
-        ctx.drawImage(currentImg, -player.width / 2, -player.height / 2, player.width, player.height);
-    } else {
-        ctx.fillStyle = '#3b82f6';
-        ctx.fillRect(-player.width / 2, -player.height / 2, player.width, player.height);
-    }
-    
-    ctx.restore();
-
-    // Name Tag (drawn after restore so it's never inverted)
+    // Player Name Tag
     ctx.save();
     const unscale = 1 / baseZoom;
     ctx.translate(pScreenX + player.width / 2, pScreenY - 10);
@@ -1685,14 +1701,8 @@ function draw() {
     ctx.fillText(player.name, 0, 0);
     ctx.shadowColor = "transparent";
     ctx.restore();
-    
-    ctx.restore(); // Restore cinematic zoom
-    
-    if (cinematicBars > 0) {
-        ctx.fillStyle = "black";
-        ctx.fillRect(0, 0, canvas.width, cinematicBars); // Top bar
-        ctx.fillRect(0, canvas.height - cinematicBars, canvas.width, cinematicBars); // Bottom bar
-    }
+
+    ctx.restore(); // Restore from UI world-transform
 }
 
 function loop(timestamp) {
