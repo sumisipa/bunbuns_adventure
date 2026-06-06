@@ -528,3 +528,60 @@ canvas {
         width: 48px;
     }
 }
+
+/* Landscape Orientation Warning Overlay */
+#orientationOverlay {
+    background: #ffb6c1; /* Matching pink theme */
+    z-index: 9999; /* Always on top */
+    text-align: center;
+    color: white;
+    padding: 20px;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.orientation-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    animation: bounce 1s infinite alternate;
+}
+
+.phone-icon {
+    font-size: 64px;
+    display: inline-block;
+    animation: rotatePhone 2.5s infinite ease-in-out;
+}
+
+#orientationOverlay p {
+    font-size: 12px;
+    line-height: 1.8;
+    text-shadow: 2px 2px 0 #ff69b4;
+    max-width: 80%;
+    margin-top: 10px;
+}
+
+@keyframes rotatePhone {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(90deg); }
+}
+
+@keyframes bounce {
+    from { transform: translateY(0); }
+    to { transform: translateY(-10px); }
+}
+
+/* Force show portrait overlay on mobile/portrait screens */
+@media (orientation: portrait) and (max-width: 1024px) {
+    #orientationOverlay {
+        display: flex !important;
+    }
+}
