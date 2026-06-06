@@ -1305,7 +1305,7 @@ function draw() {
 
     let baseZoom = 1.0;
     if (window.innerHeight > window.innerWidth) { // portrait
-        baseZoom = 0.45; // zoom out more on mobile
+        baseZoom = 0.25; // zoom out more on mobile
     }
 
     if (gameState === 'celebration_sequence') {
