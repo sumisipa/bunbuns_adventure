@@ -324,8 +324,8 @@ function checkCollisions() {
                     animTimer: 0,
                     facingRight: true,
                     moveTimer: 0,
-                    chatMessage: "I'm here to protect you, Mahal!",
-                    chatTimer: 4.0
+                    chatMessage: "Mahal, sorry I'm late, nag code pa kasi ako.",
+                    chatTimer: 5.0
                 });
             }
         }, 500);
@@ -627,6 +627,10 @@ function update(dt) {
                 }
             });
             
+            if (b.attackTimer > 0) {
+                b.attackTimer -= dt;
+            }
+            
             if (target) {
                 // Head towards the enemy to intercept
                 const dx = target.x - b.x;
@@ -641,6 +645,7 @@ function update(dt) {
                 if (b.shootTimer === undefined) b.shootTimer = 3.0;
                 b.shootTimer -= dt;
                 if (b.shootTimer <= 0) {
+                    b.attackTimer = 0.9; // 0.9 seconds of attack animation
                     projectiles.push({
                         x: b.x,
                         y: b.y,
@@ -995,25 +1000,31 @@ function draw() {
         if (b.type === 'protector') {
             drawWidth *= 1.2;
             drawHeight *= 1.2;
-        }
-
-        if (b.stunTimer > 0) {
-            // Make it not fast: 0.3 seconds per frame
-            if (b.stunTimer > 5.7) bImg = images.bat1;
-            else if (b.stunTimer > 5.4) bImg = images.bat2;
-            else if (b.stunTimer > 5.1) bImg = images.bat3;
-            else {
+            
+            // Play bat animation on Clarence when attacking
+            if (b.attackTimer > 0) {
+                if (b.attackTimer > 0.6) bImg = images.bat1;
+                else if (b.attackTimer > 0.3) bImg = images.bat2;
+                else bImg = images.bat3;
+            } else if (b.jumpTimer > 0) {
+                bImg = images.playerJump;
+            } else if (b.animFrame === 1) {
+                bImg = images.playerWalk1;
+            } else if (b.animFrame === 2) {
+                bImg = images.playerWalk2;
+            }
+        } else {
+            if (b.stunTimer > 0) {
                 bImg = images.beaten;
-                // Beaten image should be a little bigger
                 drawWidth *= 1.2;
                 drawHeight *= 1.2;
+            } else if (b.jumpTimer > 0) {
+                bImg = images.playerJump;
+            } else if (b.animFrame === 1) {
+                bImg = images.playerWalk1;
+            } else if (b.animFrame === 2) {
+                bImg = images.playerWalk2;
             }
-        } else if (b.jumpTimer > 0) {
-            bImg = images.playerJump;
-        } else if (b.animFrame === 1) {
-            bImg = images.playerWalk1;
-        } else if (b.animFrame === 2) {
-            bImg = images.playerWalk2;
         }
 
         ctx.save();
@@ -1022,7 +1033,7 @@ function draw() {
         
         // Put a blue filter for Clarence
         if (b.type === 'protector') {
-            ctx.filter = 'hue-rotate(180deg) saturate(200%)';
+            ctx.filter = 'hue-rotate(260deg) saturate(200%)';
         }
         
         if (bImg && bImg.complete && bImg.naturalWidth > 0) {
