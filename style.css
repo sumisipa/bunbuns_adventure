@@ -36,10 +36,17 @@ canvas {
     padding: 20px;
 }
 
-#collectionCounter {
+#countersContainer {
     position: absolute;
     top: 20px;
     left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+#collectionCounter, #picCounter {
     color: white;
     text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
     font-size: 14px;
@@ -641,4 +648,156 @@ canvas {
     .tape-label {
         font-size: 8px;
     }
+}
+
+/* Backpack Icon */
+#backpackContainer {
+    position: absolute;
+    top: 20px;
+    right: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    background: rgba(255, 105, 180, 0.4);
+    padding: 10px;
+    border: 4px solid #ffb6c1;
+    box-shadow: inset -4px -4px 0 rgba(0,0,0,0.2);
+    pointer-events: auto;
+}
+
+#backpackIcon {
+    font-size: 30px;
+}
+
+.backpack-text {
+    font-size: 10px;
+    margin-top: 5px;
+    color: white;
+    text-shadow: 1px 1px 0 #000;
+}
+
+/* Backpack UI Popup */
+#backpackPopup {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+    z-index: 90;
+}
+
+.backpack-ui-wrapper {
+    width: 80%;
+    max-width: 600px;
+    height: 70%;
+    background: #ffb6c1;
+    border: 5px solid #fff;
+    box-shadow: 8px 8px 0 #000;
+    position: relative;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.backpack-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    margin-top: 20px;
+}
+
+.pixel-tab {
+    background: #e0a0b0;
+    color: white;
+    border: 3px solid #fff;
+    font-family: 'Press Start 2P', cursive;
+    padding: 10px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.pixel-tab.active {
+    background: #ff69b4;
+    box-shadow: 4px 4px 0 #000;
+}
+
+.backpack-grid {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    overflow-y: auto;
+    align-content: flex-start;
+    padding: 10px;
+    background: rgba(255,255,255,0.5);
+    border: 3px solid #fff;
+}
+
+.grid-item {
+    width: 80px;
+    height: 80px;
+    background: #fff;
+    border: 3px solid #ff69b4;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #000;
+    font-size: 10px;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 3px 3px 0 rgba(0,0,0,0.2);
+}
+
+.grid-item img {
+    max-width: 50px;
+    max-height: 50px;
+}
+
+/* Pic Popup */
+#picPopup {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+    z-index: 100;
+}
+
+.pic-container {
+    background: #fff;
+    border: 5px solid #ffb6c1;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 20px;
+    box-shadow: 8px 8px 0 #000;
+    max-width: 80%;
+}
+
+#picDisplay {
+    max-width: 250px;
+    max-height: 250px;
+    border: 3px solid #000;
+}
+
+.pic-message {
+    margin-top: 15px;
+    color: #000;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.5;
 }

@@ -1,3 +1,8 @@
+// Global Error Handler
+window.addEventListener('error', function(e) {
+    alert("CRASH LOG: " + e.message + "\nLine: " + e.lineno);
+});
+
 // Game variables
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -52,6 +57,13 @@ const sfxWalk = document.getElementById('sfxWalk');
 const sfxJump = document.getElementById('sfxJump');
 const sfxBatHit = document.getElementById('sfxBatHit');
 
+let sfxClarenceRun = null;
+if (sfxWalk) {
+    sfxClarenceRun = sfxWalk.cloneNode();
+    sfxClarenceRun.playbackRate = 2.0;
+    sfxClarenceRun.loop = true;
+}
+
 // Standard Image Loader
 const images = {
     grass: new Image(),
@@ -64,7 +76,13 @@ const images = {
     bat1: new Image(),
     bat2: new Image(),
     bat3: new Image(),
-    beaten: new Image()
+    beaten: new Image(),
+    pic1: new Image(),
+    pic2: new Image(),
+    pic3: new Image(),
+    pic4: new Image(),
+    pic5: new Image(),
+    pic6: new Image()
 };
 
 images.grass.src = 'grass.png';
@@ -78,13 +96,19 @@ images.bat1.src = 'bat1.png';
 images.bat2.src = 'bat2.png';
 images.bat3.src = 'bat3.png';
 images.beaten.src = 'beaten.png';
-
-let projectiles = [];
+images.pic1.src = 'pic1.png';
+images.pic2.src = 'pic2.png';
+images.pic3.src = 'pic3.png';
+images.pic4.src = 'pic4.png';
+images.pic5.src = 'pic5.png';
+images.pic6.src = 'pic6.png';
 
 // State
-let gameState = 'intro'; // intro, playing, reading, celebrating, cassette, celebration_wait
+let gameState = 'intro'; // intro, playing, reading, celebrating, cassette, celebration_wait, pic_chase, pic_reading
 let lettersFound = 0;
+let picsFound = 0;
 const totalLetters = 8;
+const totalPics = 6;
 const messages = [
     "Mahal, happy monthsary to us. I can't believe ang tagal na natin. I'm thankful hanggang ngayon kasi sinagot mo ako. I'm proud of us. Despite every battle we faced, we're still here for each other.",
     "I see you. I see your efforts towards me. I see that you care for me and love me. Salamat sa lahat. Walang kulang sa'yo, lahat ibinigay mo kaya thankful ako at mahal na mahal kita. I'm beyond grateful.",
@@ -94,6 +118,15 @@ const messages = [
     "Thank you for being yourself. Thank you for being the person I fell in love with. Mahal na mahal kita, and I'd choose you every single time.",
     "Mahal, one thing I want you to always remember is that I didn't choose you because of what you could give me. I chose you because you're you. Your smile, your personality, your heart, your little habits, your flaws, and everything that makes you who you are.",
     "Thank you for being my person, my comfort, and my happiness. More monthsaries to come, mahal. More adventures, more laughter, more growth, and hopefully a lifetime of us. I love you always and in all ways."
+];
+
+const picMessages = [
+    "Cuties together",
+    "You are my sunshine",
+    "Best day ever with my love",
+    "I will always cherish this",
+    "Look how happy we are",
+    "Forever mine"
 ];
 
 // Player
@@ -283,6 +316,24 @@ function spawnEnvelope() {
 }
 
 function checkCollisions() {
+    if (gameState === 'pic_chase') {
+        bots.forEach(b => {
+            if (b.type === 'pic_thief' && b.stunTimer > 0) {
+                const dx = (player.x + player.width/2) - (b.x + player.width/2);
+                const dy = (player.y + player.height/2) - (b.y + player.height/2);
+                const distance = Math.hypot(dx, dy);
+                if (distance < player.width) {
+                    gameState = 'pic_reading';
+                    if (document.getElementById('picDisplay')) document.getElementById('picDisplay').src = `pic${b.picIndex}.png`;
+                    if (document.getElementById('picMessage')) document.getElementById('picMessage').textContent = picMessages[b.picIndex - 1];
+                    if (document.getElementById('picPopup')) document.getElementById('picPopup').classList.remove('hidden');
+                    playEnvelopeSound();
+                    player.vx = 0; player.vy = 0;
+                }
+            }
+        });
+    }
+
     if (!envelope.active) return;
     const dx = (player.x + player.width/2) - (envelope.x + envelope.width/2);
     const dy = (player.y + player.height/2) - (envelope.y + envelope.height/2);
@@ -324,8 +375,8 @@ function checkCollisions() {
                     animTimer: 0,
                     facingRight: true,
                     moveTimer: 0,
-                    chatMessage: "Mahal, sorry I'm late, nag code pa kasi ako.",
-                    chatTimer: 5.0
+                    chatMessage: "Hi po mahal! sorry I'm late, nag code pa kasi ako.",
+                    chatTimer: 12.0
                 });
             }
         }, 500);
@@ -355,15 +406,164 @@ document.getElementById('closeLetterBtn').addEventListener('click', () => {
     document.getElementById('letterPopup').classList.add('hidden');
     if (typeWriterTimer) clearInterval(typeWriterTimer);
     
-    if (lettersFound >= totalLetters) {
-        gameState = 'celebration_wait';
-        player.jumpCount = 0;
-        player.jumpCooldown = 0.5; // Initial delay before 5 jumps
-    } else {
+    updateBackpackUI();
+    
+    if (gameState === 'backpack') return; // if opened from backpack, do nothing
+    
+    if (lettersFound >= totalLetters && gameState !== 'pic_chase' && gameState !== 'pic_chase_intro' && gameState !== 'celebration_wait') {
+        const pc = document.getElementById('picCounter');
+        if (pc) pc.classList.remove('hidden');
+        gameState = 'pic_chase_intro';
+        
+        // Stun all guardians permanently instead of removing them
+        bots.forEach(b => {
+            if (b.type === 'guardian') {
+                b.guardianState = 'stunned';
+                b.stunTimer = 999999; // Never wake up
+                b.chatMessage = null;
+            }
+            if (b.type === 'protector') {
+                b.chatMessage = "Wow mahal! Ang galing natin!";
+                b.chatTimer = 3.0;
+            }
+        });
+        
+        setTimeout(() => {
+            gameState = 'pic_chase';
+            spawnPicThief();
+        }, 3000);
+    } else if (gameState === 'reading') {
         gameState = 'playing';
         spawnEnvelope();
     }
 });
+
+function spawnPicThief() {
+    if (picsFound >= totalPics) {
+        gameState = 'celebration_sequence';
+        player.vx = 0;
+        player.vy = 0;
+        
+        bots.forEach(b => {
+            if (b.type === 'protector') {
+                b.vx = 0; b.vy = 0;
+                b.attackTarget = null;
+                b.chatMessage = null;
+                b.celebPhase = 0;
+                b.celebTimer = 0;
+            }
+        });
+        return;
+    }
+    
+    let angle = Math.random() * Math.PI * 2;
+    let spawnDistance = 500;
+    
+    // Reset Clarence chase state for new thief
+    bots.forEach(b => {
+        if (b.type === 'protector') {
+            b.chaseTimer = 10.0;
+            b.jumpedInChase = false;
+        }
+    });
+    
+    bots.push({
+        type: 'pic_thief',
+        x: player.x + Math.cos(angle) * spawnDistance,
+        y: player.y + Math.sin(angle) * spawnDistance,
+        vx: 0,
+        vy: 0,
+        speed: player.speed * 0.8,
+        jumpTimer: 0,
+        animFrame: 0,
+        animTimer: 0,
+        facingRight: true,
+        picIndex: picsFound + 1,
+        stunTimer: 0,
+        chatMessage: "No way this is mine!",
+        chatTimer: 4.0
+    });
+}
+
+document.getElementById('closePicBtn').addEventListener('click', () => {
+    document.getElementById('picPopup').classList.add('hidden');
+    
+    if (gameState === 'backpack') return; // opened from backpack
+    
+    picsFound++;
+    document.getElementById('picCount').innerText = picsFound;
+    
+    // Remove the stunned thief
+    bots = bots.filter(b => b.type !== 'pic_thief');
+    
+    updateBackpackUI();
+    
+    gameState = 'pic_chase';
+    spawnPicThief();
+});
+
+// Backpack UI Logic
+const backpackIcon = document.getElementById('backpackContainer');
+const backpackPopup = document.getElementById('backpackPopup');
+const closeBackpackBtn = document.getElementById('closeBackpackBtn');
+const tabEnvelopes = document.getElementById('tabEnvelopes');
+const tabPics = document.getElementById('tabPics');
+const gridEnvelopes = document.getElementById('backpackGridEnvelopes');
+const gridPics = document.getElementById('backpackGridPics');
+let previousGameState = 'playing';
+
+backpackIcon.addEventListener('click', () => {
+    previousGameState = gameState;
+    gameState = 'backpack';
+    backpackPopup.classList.remove('hidden');
+    updateBackpackUI();
+});
+
+closeBackpackBtn.addEventListener('click', () => {
+    backpackPopup.classList.add('hidden');
+    gameState = previousGameState;
+});
+
+tabEnvelopes.addEventListener('click', () => {
+    tabEnvelopes.classList.add('active');
+    tabPics.classList.remove('active');
+    gridEnvelopes.classList.remove('hidden');
+    gridPics.classList.add('hidden');
+});
+
+tabPics.addEventListener('click', () => {
+    tabPics.classList.add('active');
+    tabEnvelopes.classList.remove('active');
+    gridPics.classList.remove('hidden');
+    gridEnvelopes.classList.add('hidden');
+});
+
+function updateBackpackUI() {
+    gridEnvelopes.innerHTML = '';
+    for (let i = 0; i < lettersFound; i++) {
+        const item = document.createElement('div');
+        item.className = 'grid-item';
+        item.innerHTML = `<img src="envelope.png"><br>Letter ${i+1}`;
+        item.onclick = () => {
+            document.getElementById('letterContent').textContent = messages[i];
+            document.getElementById('letterPopup').classList.remove('hidden');
+        };
+        gridEnvelopes.appendChild(item);
+    }
+    
+    gridPics.innerHTML = '';
+    for (let i = 0; i < picsFound; i++) {
+        const item = document.createElement('div');
+        item.className = 'grid-item';
+        item.innerHTML = `<img src="pic${i+1}.png"><br>Pic ${i+1}`;
+        item.onclick = () => {
+            document.getElementById('picDisplay').src = `pic${i+1}.png`;
+            document.getElementById('picMessage').textContent = picMessages[i];
+            document.getElementById('picPopup').classList.remove('hidden');
+        };
+        gridPics.appendChild(item);
+    }
+}
 
 function showCelebration() {
     gameState = 'celebrating';
@@ -459,6 +659,76 @@ tapePickWrappers.forEach(wrapper => {
 
 // Update & Render Loop
 function update(dt) {
+    if (gameState === 'celebration_sequence') {
+        player.vx = 0;
+        player.vy = 0;
+        
+        bots.forEach(b => {
+            if (b.type === 'protector') {
+                const targetX = player.x - 60;
+                const targetY = player.y;
+                const dx = targetX - b.x;
+                const dy = targetY - b.y;
+                const dist = Math.hypot(dx, dy);
+                
+                if (dist > 5) {
+                    b.vx = dx / dist;
+                    b.vy = dy / dist;
+                    b.speed = player.speed;
+                } else {
+                    b.x = targetX;
+                    b.y = targetY;
+                    b.vx = 0;
+                    b.vy = 0;
+                    b.facingRight = true; 
+                    player.facingRight = false;
+                    
+                    b.celebTimer -= dt;
+                    if (b.celebTimer <= 0) {
+                        if (b.celebPhase === 0) {
+                            b.chatMessage = "Mahal na mahal kita princess";
+                            b.chatTimer = 3.0;
+                            b.celebTimer = 3.5;
+                            b.celebPhase++;
+                        } else if (b.celebPhase === 1) {
+                            b.chatMessage = "Happy monthsary to us";
+                            b.chatTimer = 3.0;
+                            b.celebTimer = 3.5;
+                            b.celebPhase++;
+                        } else if (b.celebPhase === 2) {
+                            b.chatMessage = "I LOVE YOU ALWAYS - IN ALL WAYS.";
+                            b.chatTimer = 3.0;
+                            b.celebTimer = 3.5;
+                            b.celebPhase++;
+                        } else if (b.celebPhase === 3) {
+                            b.chatMessage = "*kisses you* 💋";
+                            b.chatTimer = 3.0;
+                            b.celebTimer = 3.5;
+                            b.celebPhase++;
+                        } else if (b.celebPhase === 4) {
+                            gameState = 'celebration_wait';
+                            player.jumpCount = 0;
+                            player.jumpCooldown = 0.5;
+                            b.chatMessage = null;
+                        }
+                    }
+                }
+                
+                if (b.vx < 0) b.facingRight = false;
+                else if (b.vx > 0) b.facingRight = true;
+                
+                b.x += b.vx * b.speed * dt;
+                b.y += b.vy * b.speed * dt;
+                
+                if (b.chatTimer > 0) {
+                    b.chatTimer -= dt;
+                    if (b.chatTimer <= 0) b.chatMessage = null;
+                }
+            }
+        });
+        return;
+    }
+
     if (gameState === 'celebration_wait') {
         player.vx = 0;
         player.vy = 0;
@@ -501,7 +771,7 @@ function update(dt) {
         return;
     }
 
-    if (gameState !== 'playing') {
+    if (gameState !== 'playing' && gameState !== 'pic_chase' && gameState !== 'pic_chase_intro' && gameState !== 'celebration_sequence') {
         if (!sfxWalk.paused) sfxWalk.pause();
         return;
     }
@@ -622,18 +892,48 @@ function update(dt) {
                 }
             }
         } else if (b.type === 'protector') {
-            // Find nearest guardian bot chasing the player
+            // Target acquisition
             let target = null;
             let minDist = 800;
-            bots.forEach(other => {
-                if (other.type === 'guardian' && (!other.stunTimer || other.stunTimer <= 0)) {
-                    const d = Math.hypot(player.x - other.x, player.y - other.y);
-                    if (d < minDist) {
-                        minDist = d;
-                        target = other;
-                    }
+            
+            if (gameState === 'pic_chase') {
+                if (b.chaseTimer === undefined) {
+                    b.chaseTimer = 10.0;
+                    b.jumpedInChase = false;
                 }
-            });
+                b.chaseTimer -= dt;
+                
+                if (b.chaseTimer > 0) {
+                    b.speed = player.speed * 0.7; // Slow chase initially
+                } else {
+                    if (!b.jumpedInChase) {
+                        b.jumpTimer = 0.5; // Jump
+                        b.jumpedInChase = true;
+                    }
+                    b.speed = player.speed * 1.8; // Old speed + more
+                }
+                
+                bots.forEach(other => {
+                    if (other.type === 'pic_thief' && (!other.stunTimer || other.stunTimer <= 0)) {
+                        const d = Math.hypot(b.x - other.x, b.y - other.y);
+                        if (d < minDist) {
+                            minDist = d;
+                            target = other;
+                        }
+                    }
+                });
+            } else {
+                b.speed = player.speed * 1.2;
+                bots.forEach(other => {
+                    if (other.type === 'guardian' && (!other.stunTimer || other.stunTimer <= 0)) {
+                        const d = Math.hypot(player.x - other.x, player.y - other.y);
+                        if (d < minDist) {
+                            minDist = d;
+                            target = other;
+                        }
+                    }
+                });
+            }
             
             if (b.attackTimer > 0) {
                 b.attackTimer -= dt;
@@ -651,7 +951,7 @@ function update(dt) {
                 if (b.attackTimer <= 0.15 && !b.stunApplied) {
                     b.stunApplied = true;
                     if (b.attackTarget && (!b.attackTarget.stunTimer || b.attackTarget.stunTimer <= 0)) {
-                        b.attackTarget.stunTimer = 6.0;
+                        b.attackTarget.stunTimer = 999999; // Stun permanently!
                         b.attackTarget.guardianState = 'stunned';
                     }
                 }
@@ -675,28 +975,47 @@ function update(dt) {
                 // Swing bat
                 if (b.shootTimer === undefined) b.shootTimer = 3.0;
                 b.shootTimer -= dt;
-                if (b.shootTimer <= 0 && (!b.attackTimer || b.attackTimer <= 0)) {
-                    b.attackTimer = 0.45; // 0.45 seconds of attack animation (faster)
-                    b.attackTarget = target;
-                    b.audioPlayed = false;
-                    b.stunApplied = false;
-                    b.shootTimer = 3.0;
+                
+                const canHit = (gameState === 'pic_chase') ? (b.chaseTimer <= 0) : true;
+                
+                if (b.shootTimer <= 0 && (!b.attackTimer || b.attackTimer <= 0) && canHit) {
+                    if (distToTarget < 70) { // Hitbox distance
+                        b.attackTimer = 0.45; // 0.45 seconds of attack animation (faster)
+                        b.attackTarget = target;
+                        b.audioPlayed = false;
+                        b.stunApplied = false;
+                        b.shootTimer = 3.0;
+                    } else {
+                        b.shootTimer = 0; // Wait until close
+                    }
                 }
                 
                 // Talk protective words
                 if (Math.random() < 0.02 && !b.chatMessage) {
-                    const protectiveMessages = [
-                        "back, wag nyo guluhin mahal ko",
-                        "layuan nyo si Bunbun!",
-                        "wag mo siyang hawakan!",
-                        "I got you!",
-                        "ako bahala sa kanila, mahal!",
-                        "back off, she's mine!",
-                        "take this bat!",
-                        "stay away!",
-                        "leave us alone!"
-                    ];
-                    b.chatMessage = protectiveMessages[Math.floor(Math.random() * protectiveMessages.length)];
+                    if (gameState === 'pic_chase') {
+                        const chaseMsgs = [
+                            "Hey wag ka tumakbo!",
+                            "Ibigay mo yan sa bebe ko!",
+                            "Layuan nyo bebe ko!",
+                            "Ang bilis nya love pero mas mabilis ako labasan",
+                            "heyyyy hampasin kita",
+                            "baby pag na habol ko sya pa hipo po ah"
+                        ];
+                        b.chatMessage = chaseMsgs[Math.floor(Math.random() * chaseMsgs.length)];
+                    } else {
+                        const protectiveMessages = [
+                            "back, wag nyo guluhin mahal ko",
+                            "layuan nyo si Bunbun!",
+                            "wag mo siyang hawakan!",
+                            "I got you!",
+                            "ako bahala sa kanila, mahal!",
+                            "back off, she's mine!",
+                            "take this bat!",
+                            "stay away!",
+                            "leave us alone!"
+                        ];
+                        b.chatMessage = protectiveMessages[Math.floor(Math.random() * protectiveMessages.length)];
+                    }
                     b.chatTimer = 3.0;
                 }
             } else {
@@ -718,6 +1037,78 @@ function update(dt) {
                 if (b.chatTimer <= 0) {
                     b.chatMessage = null; // Reset for next trigger
                 }
+            }
+        } else if (b.type === 'pic_thief') {
+            if (b.stunTimer > 0) {
+                b.stunTimer -= dt;
+                b.vx = 0; b.vy = 0;
+            } else {
+                const isBeingAttacked = bots.some(other => other.type === 'protector' && other.attackTimer > 0 && other.attackTarget === b);
+                if (isBeingAttacked) {
+                    b.vx = 0;
+                    b.vy = 0;
+                } else {
+                const isClarenceRapid = bots.some(other => other.type === 'protector' && other.chaseTimer !== undefined && other.chaseTimer <= 0);
+                
+                let distToThreat = Math.hypot(b.x - player.x, b.y - player.y);
+                let closestThreat = player;
+                bots.forEach(other => {
+                    if (other.type === 'protector') {
+                        const d = Math.hypot(b.x - other.x, b.y - other.y);
+                        if (d < distToThreat) {
+                            distToThreat = d;
+                            closestThreat = other;
+                        }
+                    }
+                });
+                
+                if (distToThreat < 200) {
+                    if (b.jumpTimer <= 0 && !isClarenceRapid && (b.evadeCooldown || 0) <= 0) {
+                        b.jumpTimer = 0.8;
+                        b.evadeCooldown = 2.0;
+                        if (sfxJump.readyState >= 2) {
+                            sfxJump.currentTime = 0;
+                            sfxJump.play().catch(e=>console.log(e));
+                        }
+                    }
+                    const len = Math.hypot(b.x - closestThreat.x, b.y - closestThreat.y);
+                    if (len > 0) {
+                        b.vx = (b.x - closestThreat.x) / len;
+                        b.vy = (b.y - closestThreat.y) / len;
+                    }
+                }
+                
+                if (b.evadeCooldown > 0) b.evadeCooldown -= dt;
+                
+                if (!isClarenceRapid && b.jumpTimer > 0) {
+                    b.speed = player.speed * 2.5;
+                } else {
+                    b.speed = player.speed * 0.8;
+                }
+                
+                if (distToThreat >= 200) {
+                    // Just wander slightly if far
+                    b.moveTimer = (b.moveTimer || 0) - dt;
+                    if (b.moveTimer <= 0) {
+                        b.vx = (Math.random() - 0.5) * 2;
+                        b.vy = (Math.random() - 0.5) * 2;
+                        const len = Math.hypot(b.vx, b.vy);
+                        if (len > 0) { b.vx/=len; b.vy/=len; }
+                        b.moveTimer = 2 + Math.random() * 3;
+                    }
+                }
+                
+                // Talk
+                if (Math.random() < 0.02 && !b.chatMessage) {
+                    b.chatMessage = "No way this is mine!";
+                    b.chatTimer = 3.0;
+                }
+            }
+            } // ADDED MISSING CLOSING BRACE
+            
+            if (b.chatTimer > 0) {
+                b.chatTimer -= dt;
+                if (b.chatTimer <= 0) b.chatMessage = null;
             }
         } else {
             // Wanderer
@@ -850,10 +1241,41 @@ function update(dt) {
             sfxWalk.pause();
         }
     }
+    
+    // Clarence Rapid Run Sound Loop
+    if (sfxClarenceRun) {
+        let isClarenceRunning = false;
+        bots.forEach(b => {
+            if (b.type === 'protector' && gameState === 'pic_chase' && b.chaseTimer <= 0) {
+                if (b.vx !== 0 || b.vy !== 0) isClarenceRunning = true;
+            }
+        });
+        
+        if (isClarenceRunning) {
+            if (sfxClarenceRun.paused && sfxClarenceRun.readyState >= 2) {
+                sfxClarenceRun.play().catch(e=>console.log(e));
+            }
+        } else {
+            if (!sfxClarenceRun.paused) sfxClarenceRun.pause();
+        }
+    }
 
     // Camera follow
-    camera.x = player.x - canvas.width / 2 + player.width / 2;
-    camera.y = player.y - canvas.height / 2 + player.height / 2;
+    let targetCamX = player.x - canvas.width / 2 + player.width / 2;
+    let targetCamY = player.y - canvas.height / 2 + player.height / 2;
+    
+    if (gameState === 'celebration_sequence') {
+        const protector = bots.find(b => b.type === 'protector');
+        if (protector) {
+            targetCamX = (player.x + protector.x) / 2 - canvas.width / 2;
+            targetCamY = (player.y + protector.y) / 2 - canvas.height / 2;
+        }
+        camera.x += (targetCamX - camera.x) * 3 * dt;
+        camera.y += (targetCamY - camera.y) * 3 * dt;
+    } else {
+        camera.x = targetCamX;
+        camera.y = targetCamY;
+    }
 
     // Animation Timer
     if (player.jumpTimer > 0) {
@@ -874,8 +1296,26 @@ function update(dt) {
     checkCollisions();
 }
 
+let cinematicZoom = 1.0;
+let cinematicBars = 0;
+
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (gameState === 'celebration_sequence') {
+        cinematicZoom += (1.5 - cinematicZoom) * 2 * 0.016; 
+        cinematicBars += (140 - cinematicBars) * 2 * 0.016; 
+    } else {
+        cinematicZoom = 1.0;
+        cinematicBars = 0;
+    }
+    
+    ctx.save();
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    ctx.translate(cx, cy);
+    ctx.scale(cinematicZoom, cinematicZoom);
+    ctx.translate(-cx, -cy);
 
     // Calculate Grid bounds
     const startCol = Math.floor(camera.x / GRID_SIZE) - 2;
@@ -957,6 +1397,58 @@ function draw() {
 
     // Draw Projectiles removed
 
+    // Indicator and Catch Text for thief
+    if (gameState === 'pic_chase') {
+        ctx.save();
+        ctx.fillStyle = "#ff69b4"; // pink
+        ctx.font = "18px 'Press Start 2P', cursive";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.shadowColor = "black";
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+        ctx.fillText("Catch the thief!", canvas.width / 2, 60);
+        ctx.restore();
+        
+        const thief = bots.find(b => b.type === 'pic_thief');
+        if (thief) {
+            const dx = thief.x - player.x;
+            const dy = thief.y - player.y;
+            const dist = Math.hypot(dx, dy);
+            
+            if (dist > Math.min(canvas.width, canvas.height) / 2) {
+                const angle = Math.atan2(dy, dx);
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const radius = Math.min(centerX, centerY) - 40;
+                
+                ctx.save();
+                ctx.translate(centerX + Math.cos(angle) * radius, centerY + Math.sin(angle) * radius);
+                ctx.rotate(angle);
+                
+                ctx.imageSmoothingEnabled = false;
+                ctx.fillStyle = "#ff69b4"; // pink
+                ctx.strokeStyle = "#fff";
+                ctx.lineWidth = 2;
+                
+                ctx.beginPath();
+                ctx.moveTo(12, 0);
+                ctx.lineTo(0, 12);
+                ctx.lineTo(0, 6);
+                ctx.lineTo(-12, 6);
+                ctx.lineTo(-12, -6);
+                ctx.lineTo(0, -6);
+                ctx.lineTo(0, -12);
+                ctx.closePath();
+                
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+    }
+
     // Draw Bots
     bots.forEach(b => {
         const bScreenX = Math.floor(b.x - camera.x);
@@ -994,8 +1486,8 @@ function draw() {
         } else {
             if (b.stunTimer > 0) {
                 bImg = images.beaten;
-                drawWidth *= 1.5;
-                drawHeight *= 1.5;
+                drawWidth *= 1.35;
+                drawHeight *= 1.35;
             } else if (b.jumpTimer > 0) {
                 bImg = images.playerJump;
             } else if (b.animFrame === 1) {
@@ -1009,20 +1501,43 @@ function draw() {
         ctx.translate(bScreenX + player.width / 2, bScreenY + player.height / 2);
         if (!b.facingRight) ctx.scale(-1, 1);
         
-        // Put a blue filter for Clarence
+        // Put filters based on bot type
         if (b.type === 'protector') {
             ctx.filter = 'hue-rotate(260deg) saturate(200%)';
+        } else if (b.type === 'pic_thief') {
+            ctx.filter = 'hue-rotate(60deg) saturate(300%) sepia(100%)'; // Yellow tint
         }
         
         if (bImg && bImg.complete && bImg.naturalWidth > 0) {
             ctx.drawImage(bImg, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
         }
         ctx.filter = 'none'; // reset filter
+        
+        // Draw the held picture for pic_thief
+        if (b.type === 'pic_thief') {
+            const heldPic = images[`pic${b.picIndex}`];
+            if (heldPic && heldPic.complete && heldPic.naturalWidth > 0) {
+                if (b.stunTimer > 0) {
+                    // Draw lying down
+                    ctx.save();
+                    ctx.translate(drawWidth / 2 - 10, drawHeight / 2 - 5);
+                    ctx.rotate(Math.PI / 2);
+                    ctx.drawImage(heldPic, -15, -15, 30, 30);
+                    ctx.restore();
+                } else {
+                    ctx.drawImage(heldPic, drawWidth / 4, -drawHeight / 4, 30, 30);
+                }
+            }
+        }
         ctx.restore();
 
         // Draw Name Tag if bot has a name
         if (b.name) {
-            ctx.fillStyle = "#ffb6c1"; 
+            if (b.type === 'protector') {
+                ctx.fillStyle = "#add8e6"; // light blue
+            } else {
+                ctx.fillStyle = "#ffb6c1"; // pink
+            }
             ctx.font = "10px 'Press Start 2P', cursive";
             ctx.textAlign = "center";
             ctx.textBaseline = "bottom";
@@ -1109,7 +1624,7 @@ function draw() {
     ctx.restore();
 
     // Name Tag (drawn after restore so it's never inverted)
-    ctx.fillStyle = "white";
+    ctx.fillStyle = "#ffb6c1";
     ctx.font = "12px 'Press Start 2P', cursive";
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
@@ -1119,6 +1634,14 @@ function draw() {
     ctx.shadowOffsetY = 2;
     ctx.fillText(player.name, pScreenX + player.width / 2, pScreenY - 10);
     ctx.shadowColor = "transparent";
+    
+    ctx.restore(); // Restore cinematic zoom
+    
+    if (cinematicBars > 0) {
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, canvas.width, cinematicBars); // Top bar
+        ctx.fillRect(0, canvas.height - cinematicBars, canvas.width, cinematicBars); // Bottom bar
+    }
 }
 
 function loop(timestamp) {
