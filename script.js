@@ -40,7 +40,12 @@ const audioPlayers = [
     document.getElementById('music3')
 ];
 let currentAudio = null;
-let loopAudio = false;
+let loopAudio = true;
+function playTapeSelectSound() {
+    playTone(400, 'sine', 0.05, 0.08);
+    setTimeout(() => playTone(600, 'sine', 0.05, 0.08), 50);
+    setTimeout(() => playTone(800, 'triangle', 0.1, 0.08), 100);
+}
 
 // SFX MP3s
 const sfxWalk = document.getElementById('sfxWalk');
@@ -100,6 +105,7 @@ const player = {
 
 // Bots Setup
 let bots = [];
+let clarenceSpawned = false;
 function initBots() {
     bots = [];
     for(let i=0; i<6; i++) {
@@ -249,21 +255,20 @@ function spawnEnvelope() {
     envelope.y = player.y + Math.sin(angle) * distance;
     envelope.active = true;
 
-    // Spawn 2 Guardian Bots near Envelope
-    for(let i=0; i<2; i++) {
-        bots.push({
-            type: 'guardian',
-            x: envelope.x + (Math.random() - 0.5) * 600,
-            y: envelope.y + (Math.random() - 0.5) * 600,
-            vx: 0, vy: 0,
-            speed: player.speed * 0.5, // Slower than player by half
-            jumpTimer: 0,
-            animFrame: 0,
-            animTimer: 0,
-            facingRight: true,
-            moveTimer: 0
-        });
-    }
+    // Spawn 1 Guardian Bot near Envelope
+    bots.push({
+        type: 'guardian',
+        guardianState: 'guarding',
+        x: envelope.x + (Math.random() - 0.5) * 600,
+        y: envelope.y + (Math.random() - 0.5) * 600,
+        vx: 0, vy: 0,
+        speed: player.speed * 0.5, // Slower than player by half
+        jumpTimer: 0,
+        animFrame: 0,
+        animTimer: 0,
+        facingRight: true,
+        moveTimer: 0
+    });
 }
 
 function checkCollisions() {
@@ -274,6 +279,17 @@ function checkCollisions() {
     
     if (distance < (player.width/2 + envelope.width/2)) {
         envelope.active = false;
+        
+        // Make all guarding bots angry
+        bots.forEach(b => {
+            if (b.type === 'guardian' && b.guardianState === 'guarding') {
+                b.guardianState = 'angry';
+                b.speed = player.speed * 0.8; // Faster!
+                b.chatMessage = "Why did you read it?!";
+                b.chatTimer = 3.0;
+            }
+        });
+        
         player.jumpTimer = 1; 
         gameState = 'reading';
         playEnvelopeSound();
@@ -282,6 +298,25 @@ function checkCollisions() {
             showLetter(messages[lettersFound]);
             lettersFound++;
             document.getElementById('letterCount').innerText = lettersFound;
+            
+            if (lettersFound === 5 && !clarenceSpawned) {
+                clarenceSpawned = true;
+                bots.push({
+                    type: 'protector',
+                    name: 'Clarence',
+                    x: player.x - 60,
+                    y: player.y - 60,
+                    vx: 0, vy: 0,
+                    speed: player.speed * 1.2,
+                    jumpTimer: 0,
+                    animFrame: 0,
+                    animTimer: 0,
+                    facingRight: true,
+                    moveTimer: 0,
+                    chatMessage: "I'm here to protect you, Mahal!",
+                    chatTimer: 4.0
+                });
+            }
         }, 500);
     }
 }
@@ -358,8 +393,6 @@ const bigCassettePopup = document.getElementById('bigCassettePopup');
 const closeCassetteBtn = document.getElementById('closeCassetteBtn');
 const insertedTape = document.getElementById('insertedTape');
 const cassetteTray = document.getElementById('cassetteTray');
-const deckStopBtn = document.getElementById('deckStopBtn');
-const deckLoopBtn = document.getElementById('deckLoopBtn');
 const cassettePlayMe = document.getElementById('cassettePlayMe');
 
 cassetteIcon.addEventListener('click', () => {
@@ -376,16 +409,12 @@ closeCassetteBtn.addEventListener('click', () => {
     }, 400);
 });
 
-deckLoopBtn.addEventListener('click', () => {
-    loopAudio = !loopAudio;
-    audioPlayers.forEach(a => a.loop = loopAudio);
-    deckLoopBtn.classList.toggle('active', loopAudio);
-});
-
 const tapePickWrappers = document.querySelectorAll('.tape-wrapper');
 tapePickWrappers.forEach(wrapper => {
     wrapper.addEventListener('click', () => {
         const track = wrapper.getAttribute('data-track');
+        
+        playTapeSelectSound();
         
         insertedTape.classList.remove('inserted', 'playing');
         cassetteTray.classList.add('open');
@@ -404,8 +433,8 @@ tapePickWrappers.forEach(wrapper => {
                     }
                     
                     currentAudio = audioPlayers[track - 1];
-                    currentAudio.volume = document.getElementById('volumeSlider').value;
-                    currentAudio.loop = loopAudio;
+                    currentAudio.volume = 0.8;
+                    currentAudio.loop = true;
                     
                     currentAudio.play().then(() => {
                         insertedTape.classList.add('playing');
@@ -415,19 +444,6 @@ tapePickWrappers.forEach(wrapper => {
             }, 400); 
         }, 300);
     });
-});
-
-deckStopBtn.addEventListener('click', () => {
-    if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.currentTime = 0;
-    }
-    insertedTape.classList.remove('playing', 'inserted');
-    cassettePlayMe.classList.remove('hidden'); // Show mini PLAY ME
-});
-
-document.getElementById('volumeSlider').addEventListener('input', (e) => {
-    audioPlayers.forEach(a => a.volume = e.target.value);
 });
 
 // Update & Render Loop
@@ -493,14 +509,131 @@ function update(dt) {
     bots.forEach(b => {
         if (b.type === 'guardian') {
             const distToPlayer = Math.hypot(player.x - b.x, player.y - b.y);
-            if (distToPlayer < 900) { // Sight radius
+            
+            if (b.guardianState === 'angry') {
+                // Chase continuously and faster
                 const dx = player.x - b.x;
                 const dy = player.y - b.y;
                 b.vx = dx / distToPlayer;
                 b.vy = dy / distToPlayer;
+                
+                if (Math.random() < 0.01 && !b.chatMessage) {
+                    const angryMessages = [
+                        "Why did you read it?!",
+                        "That was mine!",
+                        "I'm so angry!",
+                        "Give it back!",
+                        "You shouldn't have done that!"
+                    ];
+                    b.chatMessage = angryMessages[Math.floor(Math.random() * angryMessages.length)];
+                    b.chatTimer = 3.0;
+                }
             } else {
-                b.vx = 0; 
-                b.vy = 0;
+                // Guarding state
+                const distToEnvelope = Math.hypot(envelope.x - b.x, envelope.y - b.y);
+                const playerDistToEnvelope = Math.hypot(player.x - envelope.x, player.y - envelope.y);
+                
+                // Only chase if player is near the envelope (e.g. within 600px of envelope)
+                if (playerDistToEnvelope < 600 && distToPlayer < 900) {
+                    const dx = player.x - b.x;
+                    const dy = player.y - b.y;
+                    b.vx = dx / distToPlayer;
+                    b.vy = dy / distToPlayer;
+                    
+                    if (distToPlayer < 350 && !b.chatMessage) {
+                        const goofyMessages = [
+                            "Go away!",
+                            "Don't come here, please!",
+                            "Mahal said NO!",
+                            "Shoo! Shoo!",
+                            "I'm telling!",
+                            "Danger! Love zone!",
+                            "Back off, human!",
+                            "No letters for you!",
+                            "Hey! Stop that!",
+                            "Keep distance!",
+                            "Not allowed!",
+                            "Get your own love!"
+                        ];
+                        b.chatMessage = goofyMessages[Math.floor(Math.random() * goofyMessages.length)];
+                        b.chatTimer = 2.5; 
+                    }
+                } else {
+                    // Stay near envelope or return to it
+                    if (distToEnvelope > 100) {
+                        const dx = envelope.x - b.x;
+                        const dy = envelope.y - b.y;
+                        b.vx = dx / distToEnvelope;
+                        b.vy = dy / distToEnvelope;
+                    } else {
+                        b.vx = 0; 
+                        b.vy = 0;
+                    }
+                }
+            }
+            
+            if (b.chatTimer > 0) {
+                b.chatTimer -= dt;
+                if (b.chatTimer <= 0) {
+                    b.chatMessage = null; // Reset for next trigger
+                }
+            }
+        } else if (b.type === 'protector') {
+            // Find nearest guardian bot chasing the player
+            let target = null;
+            let minDist = 800;
+            bots.forEach(other => {
+                if (other.type === 'guardian') {
+                    const d = Math.hypot(player.x - other.x, player.y - other.y);
+                    if (d < minDist) {
+                        minDist = d;
+                        target = other;
+                    }
+                }
+            });
+            
+            if (target) {
+                // Head towards the enemy to intercept
+                const dx = target.x - b.x;
+                const dy = target.y - b.y;
+                const distToTarget = Math.hypot(dx, dy);
+                if (distToTarget > 0) {
+                    b.vx = dx / distToTarget;
+                    b.vy = dy / distToTarget;
+                }
+                
+                // Talk protective words
+                if (Math.random() < 0.02 && !b.chatMessage) {
+                    const protectiveMessages = [
+                        "back, wag nyo guluhin mahal ko",
+                        "layuan nyo si Bunbun!",
+                        "wag mo siyang hawakan!",
+                        "I got you!",
+                        "ako bahala sa kanila, mahal!",
+                        "back off, she's mine!"
+                    ];
+                    b.chatMessage = protectiveMessages[Math.floor(Math.random() * protectiveMessages.length)];
+                    b.chatTimer = 3.0;
+                }
+            } else {
+                // Follow the player
+                const dx = player.x - b.x;
+                const dy = player.y - b.y;
+                const distToPlayer = Math.hypot(dx, dy);
+                if (distToPlayer > 80) {
+                    b.vx = dx / distToPlayer;
+                    b.vy = dy / distToPlayer;
+                } else {
+                    b.vx = 0;
+                    b.vy = 0;
+                }
+            }
+            
+            if (b.chatTimer > 0) {
+                b.chatTimer -= dt;
+                if (b.chatTimer <= 0) {
+                    b.chatMessage = null; // Reset for next trigger
+                }
             }
         } else {
             // Wanderer
@@ -570,10 +703,20 @@ function update(dt) {
                 const overlap = minDist - dist;
                 const nx = dx / dist;
                 const ny = dy / dist;
-                b1.x -= nx * overlap * 0.5;
-                b1.y -= ny * overlap * 0.5;
-                b2.x += nx * overlap * 0.5;
-                b2.y += ny * overlap * 0.5;
+                
+                if ((b1.type === 'protector' && b2.type === 'guardian') || (b1.type === 'guardian' && b2.type === 'protector')) {
+                    // Protector pushes guardian super hard!
+                    const protector = b1.type === 'protector' ? b1 : b2;
+                    const guardian = b1.type === 'guardian' ? b1 : b2;
+                    const sign = (guardian === b2) ? 1 : -1;
+                    guardian.x += nx * overlap * 2.0 * sign;
+                    guardian.y += ny * overlap * 2.0 * sign;
+                } else {
+                    b1.x -= nx * overlap * 0.5;
+                    b1.y -= ny * overlap * 0.5;
+                    b2.x += nx * overlap * 0.5;
+                    b2.y += ny * overlap * 0.5;
+                }
             }
         }
     }
@@ -751,6 +894,59 @@ function draw() {
             ctx.drawImage(bImg, -player.width / 2, -player.height / 2, player.width, player.height);
         }
         ctx.restore();
+
+        // Draw Name Tag if bot has a name
+        if (b.name) {
+            ctx.fillStyle = "#ffb6c1"; 
+            ctx.font = "10px 'Press Start 2P', cursive";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "bottom";
+            ctx.shadowColor = "black";
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetX = 1;
+            ctx.shadowOffsetY = 1;
+            ctx.fillText(b.name, bScreenX + player.width / 2, bScreenY - 5);
+            ctx.shadowColor = "transparent";
+        }
+
+        // Draw chat bubble if bot has a message
+        if (b.chatMessage) {
+            ctx.save();
+            ctx.font = "8px 'Press Start 2P', cursive";
+            const textWidth = ctx.measureText(b.chatMessage).width;
+            const padding = 8;
+            const bubbleWidth = textWidth + padding * 2;
+            const bubbleHeight = 18;
+            const bx = bScreenX + player.width / 2;
+            const by = bScreenY - 15;
+            
+            ctx.fillStyle = b.type === 'protector' ? "rgba(59, 130, 246, 0.95)" : "rgba(255, 105, 180, 0.95)";
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 2;
+            
+            ctx.fillRect(bx - bubbleWidth / 2, by - bubbleHeight, bubbleWidth, bubbleHeight);
+            ctx.strokeRect(bx - bubbleWidth / 2, by - bubbleHeight, bubbleWidth, bubbleHeight);
+            
+            ctx.beginPath();
+            ctx.moveTo(bx - 5, by);
+            ctx.lineTo(bx + 5, by);
+            ctx.lineTo(bx, by + 5);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.strokeStyle = "#fff";
+            ctx.beginPath();
+            ctx.moveTo(bx - 5, by);
+            ctx.lineTo(bx, by + 5);
+            ctx.lineTo(bx + 5, by);
+            ctx.stroke();
+            
+            ctx.fillStyle = "#fff";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(b.chatMessage, bx, by - bubbleHeight / 2);
+            ctx.restore();
+        }
     });
 
     // Player Rendering

@@ -23,21 +23,10 @@
         <!-- Big Cassette UI Popup -->
         <div id="bigCassettePopup" class="hidden fade-transition">
             <div class="cassette-ui-wrapper">
-                <button id="closeCassetteBtn" class="pixel-close-btn">X</button>
-                
                 <div class="cassette-machine-sprite">
+                    <button id="closeCassetteBtn" class="pixel-close-btn">X</button>
                     <div id="cassetteTray" class="closed"></div>
                     <img src="tape.png" id="insertedTape" class="hidden">
-                    
-                    <div class="machine-controls">
-                        <button id="deckStopBtn" class="pixel-btn" title="Stop">⏹️</button>
-                        <button id="deckLoopBtn" class="pixel-btn" title="Loop">🔁</button>
-                    </div>
-                    
-                    <div class="volume-container">
-                        <label>VOL</label>
-                        <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.5">
-                    </div>
                 </div>
                 
                 <div class="play-me-text">PLAY ME</div>
