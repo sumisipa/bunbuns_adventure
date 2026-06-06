@@ -637,15 +637,22 @@ function update(dt) {
             
             if (b.attackTimer > 0) {
                 b.attackTimer -= dt;
-                if (b.attackTimer <= 0) {
-                    // Attack finished (bat image 3 done), stun enemy!
+                
+                // Play audio on bat2 (timer <= 0.30)
+                if (b.attackTimer <= 0.30 && !b.audioPlayed) {
+                    b.audioPlayed = true;
+                    if (sfxBatHit && sfxBatHit.readyState >= 2) {
+                        sfxBatHit.currentTime = 0; // Removed timestamp start
+                        sfxBatHit.play().catch(e=>console.log(e));
+                    }
+                }
+                
+                // Stun on bat3 (timer <= 0.15)
+                if (b.attackTimer <= 0.15 && !b.stunApplied) {
+                    b.stunApplied = true;
                     if (b.attackTarget && (!b.attackTarget.stunTimer || b.attackTarget.stunTimer <= 0)) {
                         b.attackTarget.stunTimer = 6.0;
                         b.attackTarget.guardianState = 'stunned';
-                        if (sfxBatHit && sfxBatHit.readyState >= 2) {
-                            sfxBatHit.currentTime = 1.0;
-                            sfxBatHit.play().catch(e=>console.log(e));
-                        }
                     }
                 }
             }
@@ -671,6 +678,8 @@ function update(dt) {
                 if (b.shootTimer <= 0 && (!b.attackTimer || b.attackTimer <= 0)) {
                     b.attackTimer = 0.45; // 0.45 seconds of attack animation (faster)
                     b.attackTarget = target;
+                    b.audioPlayed = false;
+                    b.stunApplied = false;
                     b.shootTimer = 3.0;
                 }
                 
@@ -970,6 +979,8 @@ function draw() {
             
             // Play bat animation on Clarence when attacking
             if (b.attackTimer > 0) {
+                drawWidth *= 1.25;
+                drawHeight *= 1.25;
                 if (b.attackTimer > 0.30) bImg = images.bat1;
                 else if (b.attackTimer > 0.15) bImg = images.bat2;
                 else bImg = images.bat3;
@@ -983,8 +994,8 @@ function draw() {
         } else {
             if (b.stunTimer > 0) {
                 bImg = images.beaten;
-                drawWidth *= 1.2;
-                drawHeight *= 1.2;
+                drawWidth *= 1.5;
+                drawHeight *= 1.5;
             } else if (b.jumpTimer > 0) {
                 bImg = images.playerJump;
             } else if (b.animFrame === 1) {
