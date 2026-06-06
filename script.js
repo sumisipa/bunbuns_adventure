@@ -195,6 +195,18 @@ document.getElementById('startBtn').addEventListener('click', () => {
     document.getElementById('introScreen').classList.add('hidden');
     gameState = 'playing';
     spawnEnvelope();
+    
+    // Request fullscreen
+    const docElm = document.documentElement;
+    if (docElm.requestFullscreen) {
+        docElm.requestFullscreen().catch(err => console.log("Fullscreen failed:", err));
+    } else if (docElm.mozRequestFullScreen) {
+        docElm.mozRequestFullScreen().catch(err => console.log(err));
+    } else if (docElm.webkitRequestFullScreen) {
+        docElm.webkitRequestFullScreen().catch(err => console.log(err));
+    } else if (docElm.msRequestFullscreen) {
+        docElm.msRequestFullscreen().catch(err => console.log(err));
+    }
 });
 
 // Keyboard Listeners
@@ -1305,7 +1317,7 @@ function draw() {
 
     let baseZoom = 1.0;
     if (window.innerHeight > window.innerWidth) { // portrait
-        baseZoom = 0.25; // zoom out more on mobile
+        baseZoom = 0.18; // zoom out more on mobile
     }
 
     if (gameState === 'celebration_sequence') {
