@@ -675,6 +675,8 @@ function update(dt) {
     if (gameState === 'celebration_sequence') {
         player.vx = 0;
         player.vy = 0;
+        player.jumpTimer = 0;
+        player.animFrame = 0;
         
         bots.forEach(b => {
             if (b.type === 'protector') {
@@ -693,6 +695,8 @@ function update(dt) {
                     b.y = targetY;
                     b.vx = 0;
                     b.vy = 0;
+                    b.jumpTimer = 0;
+                    b.animFrame = 0;
                     b.facingRight = true; 
                     player.facingRight = false;
                     
@@ -1075,7 +1079,7 @@ function update(dt) {
                     }
                 });
                 
-                if (distToThreat < 200) {
+                if (distToThreat < 100) {
                     if (b.jumpTimer <= 0 && !isClarenceRapid && (b.evadeCooldown || 0) <= 0) {
                         b.jumpTimer = 0.8;
                         b.evadeCooldown = 2.0;
@@ -1099,7 +1103,7 @@ function update(dt) {
                     b.speed = player.speed * 0.8;
                 }
                 
-                if (distToThreat >= 200) {
+                if (distToThreat >= 100) {
                     // Just wander slightly if far
                     b.moveTimer = (b.moveTimer || 0) - dt;
                     if (b.moveTimer <= 0) {
@@ -1322,7 +1326,7 @@ function draw() {
 
     if (gameState === 'celebration_sequence') {
         cinematicZoom += (1.5 - cinematicZoom) * 2 * 0.016; 
-        cinematicBars += (140 - cinematicBars) * 2 * 0.016; 
+        cinematicBars += (100 - cinematicBars) * 2 * 0.016; 
     } else {
         cinematicZoom = 1.0;
         cinematicBars = 0;
