@@ -50,6 +50,7 @@ function playTapeSelectSound() {
 // SFX MP3s
 const sfxWalk = document.getElementById('sfxWalk');
 const sfxJump = document.getElementById('sfxJump');
+const sfxBatHit = document.getElementById('sfxBatHit');
 
 // Standard Image Loader
 const images = {
@@ -59,7 +60,11 @@ const images = {
     playerIdle: new Image(),
     playerWalk1: new Image(),
     playerWalk2: new Image(),
-    playerJump: new Image()
+    playerJump: new Image(),
+    bat1: new Image(),
+    bat2: new Image(),
+    bat3: new Image(),
+    beaten: new Image()
 };
 
 images.grass.src = 'grass.png';
@@ -69,6 +74,12 @@ images.playerIdle.src = 'player_idle.png';
 images.playerWalk1.src = 'player_walk1.png';
 images.playerWalk2.src = 'player_walk2.png';
 images.playerJump.src = 'player_jump.png';
+images.bat1.src = 'bat1.png';
+images.bat2.src = 'bat2.png';
+images.bat3.src = 'bat3.png';
+images.beaten.src = 'beaten.png';
+
+let projectiles = [];
 
 // State
 let gameState = 'intro'; // intro, playing, reading, celebrating, cassette, celebration_wait
@@ -457,6 +468,14 @@ function update(dt) {
         if (player.jumpTimer <= 0 && player.jumpCooldown <= 0) {
             if (player.jumpCount < 5) {
                 player.jumpTimer = 0.5; // Jump
+                
+                bots.forEach(b => {
+                    if (b.type === 'protector') {
+                        b.jumpTimer = 0.5;
+                        b.facingRight = (b.x < player.x);
+                    }
+                });
+                
                 player.jumpCooldown = 1.0; // 1-second delay
                 player.jumpCount++;
                 if (sfxJump.readyState >= 2) {
@@ -473,6 +492,12 @@ function update(dt) {
             player.jumpTimer -= dt * 2;
             if (player.jumpTimer < 0) player.jumpTimer = 0;
         }
+        bots.forEach(b => {
+            if (b.type === 'protector' && b.jumpTimer > 0) {
+                b.jumpTimer -= dt * 2;
+                if (b.jumpTimer < 0) b.jumpTimer = 0;
+            }
+        });
         return;
     }
 
@@ -508,6 +533,16 @@ function update(dt) {
     // Bots AI logic
     bots.forEach(b => {
         if (b.type === 'guardian') {
+            if (b.stunTimer > 0) {
+                b.stunTimer -= dt;
+                b.vx = 0;
+                b.vy = 0;
+                if (b.stunTimer <= 0) {
+                    b.guardianState = 'angry';
+                }
+                return; // skip rest of AI while stunned
+            }
+            
             const distToPlayer = Math.hypot(player.x - b.x, player.y - b.y);
             
             if (b.guardianState === 'angry') {
@@ -583,7 +618,7 @@ function update(dt) {
             let target = null;
             let minDist = 800;
             bots.forEach(other => {
-                if (other.type === 'guardian') {
+                if (other.type === 'guardian' && (!other.stunTimer || other.stunTimer <= 0)) {
                     const d = Math.hypot(player.x - other.x, player.y - other.y);
                     if (d < minDist) {
                         minDist = d;
@@ -602,6 +637,22 @@ function update(dt) {
                     b.vy = dy / distToTarget;
                 }
                 
+                // Shoot bat
+                if (b.shootTimer === undefined) b.shootTimer = 3.0;
+                b.shootTimer -= dt;
+                if (b.shootTimer <= 0) {
+                    projectiles.push({
+                        x: b.x,
+                        y: b.y,
+                        vx: dx / distToTarget,
+                        vy: dy / distToTarget,
+                        speed: 500,
+                        animFrame: 1,
+                        animTimer: 0
+                    });
+                    b.shootTimer = 3.0;
+                }
+                
                 // Talk protective words
                 if (Math.random() < 0.02 && !b.chatMessage) {
                     const protectiveMessages = [
@@ -610,7 +661,10 @@ function update(dt) {
                         "wag mo siyang hawakan!",
                         "I got you!",
                         "ako bahala sa kanila, mahal!",
-                        "back off, she's mine!"
+                        "back off, she's mine!",
+                        "take this bat!",
+                        "stay away!",
+                        "leave us alone!"
                     ];
                     b.chatMessage = protectiveMessages[Math.floor(Math.random() * protectiveMessages.length)];
                     b.chatTimer = 3.0;
@@ -669,6 +723,41 @@ function update(dt) {
             }
         }
     });
+
+    // Projectiles
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+        const p = projectiles[i];
+        p.x += p.vx * p.speed * dt;
+        p.y += p.vy * p.speed * dt;
+        
+        p.animTimer += dt;
+        if (p.animTimer > 0.1) {
+            p.animFrame = (p.animFrame % 3) + 1; // 1, 2, 3
+            p.animTimer = 0;
+        }
+        
+        // Hit detection
+        let hit = false;
+        bots.forEach(b => {
+            if (b.type === 'guardian' && !hit && (!b.stunTimer || b.stunTimer <= 0)) {
+                const dx = p.x - b.x;
+                const dy = p.y - b.y;
+                if (Math.hypot(dx, dy) < 40) {
+                    hit = true;
+                    b.stunTimer = 6.0; // Stun for 6 seconds
+                    b.guardianState = 'stunned';
+                    if (sfxBatHit && sfxBatHit.readyState >= 2) {
+                        sfxBatHit.currentTime = 0;
+                        sfxBatHit.play().catch(e=>console.log(e));
+                    }
+                }
+            }
+        });
+        
+        if (hit || p.x < camera.x - 200 || p.x > camera.x + canvas.width + 200 || p.y < camera.y - 200 || p.y > camera.y + canvas.height + 200) {
+            projectiles.splice(i, 1);
+        }
+    }
 
     // Handle Collisions (Player <-> Bots)
     bots.forEach(b => {
@@ -869,6 +958,24 @@ function draw() {
         }
     }
 
+    // Draw Projectiles
+    projectiles.forEach(p => {
+        const pScreenX = Math.floor(p.x - camera.x);
+        const pScreenY = Math.floor(p.y - camera.y);
+        
+        let pImg = images['bat' + p.animFrame];
+        if (!pImg) pImg = images.bat1;
+        
+        if (pImg && pImg.complete && pImg.naturalWidth > 0) {
+            ctx.save();
+            ctx.translate(pScreenX, pScreenY);
+            // Face direction of velocity
+            if (p.vx < 0) ctx.scale(-1, 1);
+            ctx.drawImage(pImg, -20, -20, 40, 40);
+            ctx.restore();
+        }
+    });
+
     // Draw Bots
     bots.forEach(b => {
         const bScreenX = Math.floor(b.x - camera.x);
@@ -882,17 +989,46 @@ function draw() {
         }
 
         let bImg = images.playerIdle;
-        if (b.jumpTimer > 0) bImg = images.playerJump;
-        else if (b.animFrame === 1) bImg = images.playerWalk1;
-        else if (b.animFrame === 2) bImg = images.playerWalk2;
+        let drawWidth = player.width;
+        let drawHeight = player.height;
+
+        if (b.type === 'protector') {
+            drawWidth *= 1.2;
+            drawHeight *= 1.2;
+        }
+
+        if (b.stunTimer > 0) {
+            // Make it not fast: 0.3 seconds per frame
+            if (b.stunTimer > 5.7) bImg = images.bat1;
+            else if (b.stunTimer > 5.4) bImg = images.bat2;
+            else if (b.stunTimer > 5.1) bImg = images.bat3;
+            else {
+                bImg = images.beaten;
+                // Beaten image should be a little bigger
+                drawWidth *= 1.2;
+                drawHeight *= 1.2;
+            }
+        } else if (b.jumpTimer > 0) {
+            bImg = images.playerJump;
+        } else if (b.animFrame === 1) {
+            bImg = images.playerWalk1;
+        } else if (b.animFrame === 2) {
+            bImg = images.playerWalk2;
+        }
 
         ctx.save();
         ctx.translate(bScreenX + player.width / 2, bScreenY + player.height / 2);
         if (!b.facingRight) ctx.scale(-1, 1);
         
-        if (bImg && bImg.complete && bImg.naturalWidth > 0) {
-            ctx.drawImage(bImg, -player.width / 2, -player.height / 2, player.width, player.height);
+        // Put a blue filter for Clarence
+        if (b.type === 'protector') {
+            ctx.filter = 'hue-rotate(180deg) saturate(200%)';
         }
+        
+        if (bImg && bImg.complete && bImg.naturalWidth > 0) {
+            ctx.drawImage(bImg, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+        }
+        ctx.filter = 'none'; // reset filter
         ctx.restore();
 
         // Draw Name Tag if bot has a name
