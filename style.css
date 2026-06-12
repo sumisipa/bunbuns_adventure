@@ -109,6 +109,64 @@ canvas {
     line-height: 1.5;
 }
 
+/* Intro Screen Clarence */
+.intro-clarence {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.intro-image {
+    width: 150px;
+    image-rendering: pixelated;
+    filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.2));
+}
+
+.intro-chat-bubble {
+    position: absolute;
+    top: -40px;
+    background: rgba(59, 130, 246, 0.95);
+    color: white;
+    padding: 10px 15px;
+    border: 3px solid white;
+    border-radius: 10px;
+    font-size: 10px;
+    white-space: nowrap;
+    text-shadow: 1px 1px 0 #000;
+    box-shadow: 4px 4px 0 rgba(0,0,0,0.3);
+    animation: float 2s infinite ease-in-out;
+}
+
+.intro-chat-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 10px 10px 0;
+    border-style: solid;
+    border-color: white transparent transparent transparent;
+}
+
+.intro-chat-bubble::before {
+    content: '';
+    position: absolute;
+    bottom: -7px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 7px 7px 0;
+    border-style: solid;
+    border-color: rgba(59, 130, 246, 0.95) transparent transparent transparent;
+    z-index: 1;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
 /* Big Cassette Popup */
 #bigCassettePopup {
     position: absolute;

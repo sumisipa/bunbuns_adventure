@@ -6,6 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
     <title>Happy Monthsary</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
@@ -111,6 +112,10 @@
 
     <!-- Intro Screen -->
     <div id="introScreen" class="fullscreen-overlay fade-transition">
+        <div class="intro-clarence">
+            <div class="intro-chat-bubble">I'm here lang, mahal.</div>
+            <img src="12.png" alt="Clarence" class="intro-image">
+        </div>
         <h1 class="pixel-title">Bunbun's Adventure</h1>
         <button id="startBtn" class="pixel-btn">START GAME</button>
     </div>
@@ -133,5 +138,14 @@
     <audio id="sfxBatHit" src="bat_hit.mp3"></audio>
 
     <script src="script.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registered!'))
+                    .catch(err => console.log('Service Worker failed:', err));
+            });
+        }
+    </script>
 </body>
 </html>
